@@ -1,0 +1,16 @@
+llm:
+  provider: "ollama"         # "ollama" | "mock"
+  model: "codellama:7b"      # any local model you’ve pulled in Ollama
+
+java:
+  junit_version: "4"         # "4" or "5" — matches your ATG repo’s version
+  test_package_suffix: ""    # e.g. ".test" if you want tests in a sibling package
+  mockito_static_imports: true
+
+test:
+  default_path: "./generated-tests"   # default output root if --test-path not given
+  update_existing: true                # append to existing test class if present
+  only_changed: false                  # set true to generate only for changed methods (via git)
+
+ux:
+  verbose_logging: true
