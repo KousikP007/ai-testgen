@@ -4,13 +4,21 @@ import io
 import re
 
 def ensure_dir(path: str):
-    os.makedirs(path, exist_ok=True)
+    """
+    Ensure that the directory for the given path exists.
+    If 'path' is a file path, create its parent directory.
+    If 'path' is already a directory, ensure it exists.
+    """
+    directory = path if os.path.isdir(path) else os.path.dirname(path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)
 
 def read_text(path: str) -> str:
     with io.open(path, "r", encoding="utf-8") as f:
         return f.read()
 
 def write_text(path: str, data: str):
+    ensure_dir(path)
     with io.open(path, "w", encoding="utf-8") as f:
         f.write(data)
 

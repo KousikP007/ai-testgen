@@ -1,8 +1,5 @@
 # src/main/cli/main.py
-import click
-import os
-import yaml
-
+import click, os, yaml
 from src.main.generator.java_parser import JavaParser
 from src.main.generator.diff_util import get_changed_line_spans, methods_touched
 from src.main.generator.llm_client import LLMClient
@@ -19,11 +16,10 @@ def cli():
 
 @cli.command()
 @click.option("--input", "input_path", required=True, help="Path to source .java file")
-@click.option("--test-path", default=None, help="Output root for tests (mirrors packages here)")
-@click.option("--only-changed", is_flag=True, default=None, help="If set, generate only for changed methods (git)")
-@click.option("--repo-root", default=".", help="Git repo root (for --only-changed)")
+@click.option("--test-path", default=None, help="Output root for tests")
+@click.option("--only-changed", is_flag=True, default=None, help="Generate only for changed methods (git diff)")
+@click.option("--repo-root", default=".", help="Git repo root")
 def generate(input_path, test_path, only_changed, repo_root):
-    """Generate or update tests for a given Java class."""
     cfg = load_cfg()
     junit = cfg["java"]["junit_version"]
     if test_path is None:
@@ -34,18 +30,18 @@ def generate(input_path, test_path, only_changed, repo_root):
     parser = JavaParser()
     class_info = parser.parse_class_info(input_path)
     if not class_info.get("primary_class"):
-        click.echo("❌ No class found in file.")
+        click.echo("❌ No class found.")
         return
 
     methods = class_info["primary_class"]["methods"]
     if only_changed:
         spans = get_changed_line_spans(repo_root, input_path)
         if not spans:
-            click.echo("ℹ️  No git changes detected; nothing to do.")
+            click.echo("ℹ️  No git changes detected; skipping.")
             return
         methods = methods_touched(spans, methods)
         if not methods:
-            click.echo("ℹ️  No changed methods overlap detected; nothing to do.")
+            click.echo("ℹ️  No changed methods detected; skipping.")
             return
 
     click.echo(f"🔎 Target class: {class_info['primary_class']['name']} (package: {class_info.get('package','')})")
@@ -56,9 +52,8 @@ def generate(input_path, test_path, only_changed, repo_root):
     llm = LLMClient(cfg)
     writer = TestWriter(cfg)
 
-    for m in methods:
-        test_method = llm.generate_test_method(class_info, m)
-        writer.write_or_update(input_path, class_info, m["name"], test_method, test_root=test_path)
+    tests = llm.generate_test_methods(class_info, methods)
+    writer.write_or_update(input_path, class_info, tests, test_root=test_path)
 
     click.echo("✅ Done.")
 
